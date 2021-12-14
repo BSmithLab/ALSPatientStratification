@@ -2,7 +2,9 @@
 R and Python scripts used in the ALS Patient Stratification analysis by Eshima et al.
 
 Author: Jarrett Eshima
+
 PI: Dr. Barbara Smith
+
 Institute: Arizona State University, School of Biological and Health Systems Engineering
 
 Short description: This file contains the instructions to replicate the ALS Patient Stratification analysis with GEO Accession GSE153960.
