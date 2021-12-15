@@ -30,7 +30,7 @@ Note:
 12) Plaisier Lab Python scripts* for development of random forest, support vector machine, and k-nearest neighbor classifiers using Scikit-learn [4]
 13) Smith Lab Python script* for development of multilayer perceptron classifier [4]
 14) ALSPatientStratification_MLP_CV_to_F1.R* 
-15) ALSPatientStratification_Supervised_Classification_PostProcessing_Final.R
+15) ALSPatientStratification_Supervised_Classification_PostProcessing.R
 16) ALSPatientStratification_TEQuant_DifferentialExpression_Controls.R (Cleans up control subject count information for GSEA and univariate analysis)
 17) ALSPatientStratification_GSEA_Prep.R
 18) Run GSEA [5] (This analysis can be paired with Cytoscape [6] for construction of gene network)
