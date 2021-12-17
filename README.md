@@ -41,12 +41,12 @@ Note:
 21) ALSPatientStratification_UnivariateAnalysis.R
 
 
-* A few notes on supervised classification:
-Required Plaisier Lab scripts [3]: classifiersV3.py ; cvClassification_FullAnalysis.py (ACTINN Neural Network not used in this analysis)
+A few notes on supervised classification:
+* Required Plaisier Lab scripts [3]: classifiersV3.py ; cvClassification_FullAnalysis.py (ACTINN Neural Network not used in this analysis)
 
-Required Smith Lab scripts: SVM.py, RF.py, KNN.py, and MLP_CV.py (very basic python script for multilayer perceptron development with CV - does not generate a classification "report" file)
+* Required Smith Lab scripts: SVM.py, RF.py, KNN.py, and MLP_CV.py (very basic python script for multilayer perceptron development with CV - does not generate a classification "report" file)
 
-Supplemental Smith Lab scripts: MLP_CV_to_F1.R (Generates a "report" file with Precision, Recall, and F1 metrics, based on MLP classification results)
+* Supplemental Smith Lab scripts: MLP_CV_to_F1.R (Generates a "report" file with Precision, Recall, and F1 metrics, based on MLP classification results)
 
 
 ## Supplemental Code
