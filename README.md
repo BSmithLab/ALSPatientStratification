@@ -53,10 +53,7 @@ A few notes on supervised classification:
 1) ALSPatientStratification_CustomTEGeneSet_Prep.R (aids with the development of a custom gene set for TEs, using RepBase [8])
 2) ALSPatientStratification_PatientDemographics.R
 3) ALSPatientStratification_TEcluster_WGCNA.R (aids with the decision to collapse locus-specific TEs to subfamily for gene enrichment)
-4) Control_Pheno4loom.R (Builds patient clinical data file for loom construction, including control subjects)
-5) Control_ReadLoom.R (Generates .Loom file for supervised classification, including control subjects)
-6) Control_MLP_CV_to_F1.R
-7) Control_Supervised_Classification_PostProcessing.R
+4) Subtype_DiscriminatoryFeature_Assignment.R (compares clustering-assigned subtype genes between the NovaSeq and HiSeq cohorts)
 
 References:
 [1] Yang, W. R., Ardeljan, D., Pacyna, C. N., Payer, L. M., & Burns, K. H. (2019). SQuIRE reveals locus-specific regulation of interspersed repeat expression. Nucleic acids research, 47(5), e27-e27.
