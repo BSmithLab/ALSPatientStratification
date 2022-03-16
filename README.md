@@ -51,7 +51,7 @@ Supporting
 3) ALSPatientStratification_Subtype_DiscriminatoryFeature_Assignment.R (compares clustering-assigned subtype genes between the NovaSeq and HiSeq cohorts)
 
 
-A few notes on supervised classification:
+*A few notes on supervised classification:
 
 * Plaisier Lab scripts [6]: classifiersV3.py ; cvClassification_FullAnalysis.py (ACTINN Neural Network not used in this analysis)
 
