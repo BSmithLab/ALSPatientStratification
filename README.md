@@ -37,7 +37,7 @@ Note:
 
 ## Supplemental Code
 
-#Supervised Classification - Code Order
+Supervised Classification - Code Order
 1) ALSPatientStratification_SupervisedClassificationFeatureScore.R (Feature selection for machine learning)
 2) ALSPatientStratification_Pheno4loom.R (Generates phenotype dataframe for .loom file development)
 3) ALSPatientStratification_ReadLoom.R (Generates .loom files for compatibility with plaisier-lab [6] supervised classification scripts)
@@ -45,7 +45,7 @@ Note:
 5) ALSPatientStratification_CVresults_to_F1report.R* 
 6) ALSPatientStratification_Supervised_Classification_PostProcessing.R
 
-#Supporting
+Supporting
 1) ALSPatientStratification_PatientDemographics.R
 2) ALSPatientStratification_TEcluster_WGCNA.R (aids with the decision to avoid collapsing locus-specific TEs to subfamilies for custom gene enrichment)
 3) ALSPatientStratification_Subtype_DiscriminatoryFeature_Assignment.R (compares clustering-assigned subtype genes between the NovaSeq and HiSeq cohorts)
