@@ -1,5 +1,5 @@
 ## ALS Patient Stratification Analysis
-R and Python scripts used in the ALS Patient Stratification analysis by Eshima et al.
+R and Python scripts used in the ALS Patient Stratification analysis by Eshima, O'Connor, Marschall, NYGC ALS Consortium, Bowser, Plaisier, and Smith
 
 Author: Jarrett Eshima
 
