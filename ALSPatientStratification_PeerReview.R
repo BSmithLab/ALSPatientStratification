@@ -25,11 +25,11 @@ library(beeswarm)
 
 ##########  RIN   #############
 setwd("C:/Users/jeshima/Documents/Smith Lab/Summer 2021/ALS Subtyping")
-Meta = read.csv("GSE153960_MetaData.txt")
-Clinical = read.csv("CLINICAL_DATA_PRUDENCIO.csv")
+Meta = read.csv("GSE153960_MetaData.txt") #Publicly available at: https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA644618&o=acc_s%3Aa
+Clinical = read.csv("CLINICAL_DATA_PRUDENCIO.csv") #Available by request from NYGC
 
 setwd("C:/Users/jeshima/Documents/Smith Lab/Summer 2021/ALS Subtyping/Pub Data/Supplemental Files")
-SRRs = read.csv("SRR_IDs.csv")
+SRRs = read.csv("SRR_IDs.csv") #Table S2
 colnames(SRRs) = SRRs[1,]
 SRRs = SRRs[-1,]
 
@@ -73,7 +73,7 @@ which(is.na(EshimaMetaData$RIN)) #one missing value from Target ALS / NYGC
 
 #RIN parsed by subtype
 setwd("C:/Users/jeshima/Documents/Smith Lab/Summer 2021/ALS Subtyping")
-SubtypeLabels = read.csv("ALS451_coldata_SUBTYPES.csv")
+SubtypeLabels = read.csv("ALS451_coldata_SUBTYPES.csv") #Table S13
 
 convertnames = gsub("-","\\.",EshimaMetaData$sample_id_alt)
 tmpMetaData = EshimaMetaData
