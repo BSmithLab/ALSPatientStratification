@@ -13,6 +13,7 @@ Note:
 1. Raw RNA-seq files can be downloaded from NCBI or the EMBL-EBI mirror.
 2. The NIH's Globus software was employed to leverage high-speed download capabilities.
 3. SQuIRE [1] was run on Arizona State University's Agave High Performance Computing Cluster
+4. Publicly available source data: https://figshare.com/authors/Jarrett_Eshima/13813720
 
 ## ALS Patient Stratification Analysis - Code Order
 
@@ -32,8 +33,10 @@ Note:
 14) ALSPatientStratification_WGCNA.R [5]
 15) ALSPatientStratification_MetaData_Extractor.R
 16) ALSPatientStratification_survival.R
-17) ALSPatientStratification_UnivariateAnalysis.R
-18) ALSPatientStratification_BootstrapClassification.R
+17) ALSPatientStratification_PatientDemographics.R
+18) ALSPatientStratification_UnivariateAnalysis.R
+19) Fig6Heatmap.R
+20) ALSPatientStratification_BootstrapClassification.R
 
 ## Supplemental Code
 
@@ -46,9 +49,9 @@ Supervised Classification - Code Order
 6) ALSPatientStratification_Supervised_Classification_PostProcessing.R
 
 Supporting
-1) ALSPatientStratification_PatientDemographics.R
-2) ALSPatientStratification_TEcluster_WGCNA.R (aids with the decision to avoid collapsing locus-specific TEs to subfamilies for custom gene enrichment)
-3) ALSPatientStratification_Subtype_DiscriminatoryFeature_Assignment.R (compares clustering-assigned subtype genes between the NovaSeq and HiSeq cohorts)
+1) ALSPatientStratification_TEcluster_WGCNA.R (aids with the decision to avoid collapsing locus-specific TEs to subfamilies for custom gene enrichment)
+2) ALSPatientStratification_Subtype_DiscriminatoryFeature_Assignment.R (compares clustering-assigned subtype genes between the NovaSeq and HiSeq cohorts)
+3) ALSPatientStratification_DE_Enrichr.R (differential expression for enrichment by Fisher's exact test)
 
 
 *A few notes on supervised classification:
