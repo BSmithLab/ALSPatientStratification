@@ -276,13 +276,13 @@ table(colnames(ONDHiSeqUnivar) == OND_HiSeqPheno$Subject)
 table(rownames(ONDNovaSeqUnivar) == rownames(ONDHiSeqUnivar))
 
 #####################################################################################################################
-########### DESeq2 for identification of subtype-specific significant genes ####################################################
+########### DESeq2 for identification of subtype-specific significant genes #########################################
 #####################################################################################################################
 wd = "D:/Jarrett/Research/Fall 2021/ProgBM/SOD1"
 setwd(wd)
 
 ## Included all Genes for improved size factor estimates
-## Multi-factor design equation (SUBTYPE, sequencing platform)
+## Multi-factor design equation (SUBTYPE, sequencing platform, RIN, site of sample collection/preparation)
 
 HCControlCounts = ControlCounts3[,colnames(ControlCounts3) %in% HCnames]
 ONDControlCounts = ControlCounts3[,colnames(ControlCounts3) %in% ONDnames]
@@ -305,87 +305,174 @@ for(i in 1:nrow(FullPheno)){
 }
 
 
-#Contrast all subtype pairs using DESeq2
+#Add RIN and Site to Pheno
+setwd("C:/Users/jeshima/Documents/Smith Lab/Summer 2021/ALS Subtyping")
+Meta = read.csv("GSE153960_MetaData.txt") #Publicly available at: https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA644618&o=acc_s%3Aa
+Clinical = read.csv("CLINICAL_DATA_PRUDENCIO.csv") #Provided by NYGC, by request
+convertnames = gsub("-","\\.",Meta$sample_id_alt)
+Meta$sample_id_alt = convertnames
 
-rCountData4 = round(FullCount,0)
+#Add in RIN
+FullPheno$RIN = NA
+Clinical2 = Clinical
+convertnames = gsub("-","\\.",Clinical2$ExternalSampleId)
+Clinical2$ExternalSampleId = convertnames
 
-dds4 = DESeqDataSetFromMatrix(countData = rCountData4, colData = FullPheno, design= ~ platform + Subtype, tidy=F) #Subtype must be second (DESeq2 vignette)
-dds4$SubjectSex = relevel(dds4$Subtype,ref = "Control")
-dseq4 = DESeq(dds4,betaPrior=T)
+for(i in 1:nrow(FullPheno)){
+  
+  for(j in 1:nrow(Clinical2)){
+    
+    if(FullPheno$Subject[i] == Clinical2$ExternalSampleId[j]){
+      
+      FullPheno$RIN[i] = Clinical2$RIN[j]
+      
+    }
+    
+  }
+  
+}
+
+table(FullPheno$Subject == colnames(FullCount))
+
+
+
+FiltMeta = Meta[Meta$sample_id_alt %in% FullPheno$Subject,]
+
+
+reftable = table(FiltMeta$sample_id_alt)
+
+removeind = rep(NA,nrow(FiltMeta)-length(reftable))
+count = 1
+for(i in 1:length(reftable)) {
+  
+  if(reftable[[i]] > 1){
+    
+    tmp = names(reftable[i])
+    inds = which(FiltMeta$sample_id_alt == tmp)
+    
+    if(length(inds) == 2){
+      removeind[count] = inds[1]
+      count = count+1
+    }else if(length(inds) == 3){
+      removeind[seq(count,count+1,1)] = inds[1:2]
+      count = count+2
+    }else if(length(inds) > 3){
+      cat("Problem")
+    }
+    
+    
+  }
+  
+}
+
+SiteMeta = FiltMeta[-removeind,]
+
+
+
+FullPheno$Site = NA
+
+for(i in 1:nrow(FullPheno)){
+  
+  for(j in 1:nrow(SiteMeta)){
+    
+    if(FullPheno$Subject[i] == SiteMeta$sample_id_alt[j]){
+      
+      FullPheno$Site[i] = SiteMeta$project[j]
+      
+    }
+    
+  }
+  
+}
+
+#Clean up site names
+for(i in 1:nrow(FullPheno)){
+  
+  if(FullPheno$Site[i] == "NYGC ALS Consortium"){
+    FullPheno$Site[i] = "NYGC"
+  }else{
+    FullPheno$Site[i] = "TargetALS"
+  }
+  
+}
+
+table(FullPheno$Site)
+
+#Single sample with missing RIN must be removed (incomplete design equation)
+table(FullPheno$Subject == colnames(FullCount))
+FullPheno_sr = FullPheno[-which(is.na(FullPheno$RIN)),]
+FullCount_sr = FullCount[,-which(is.na(FullPheno$RIN))]
+
+FullPheno_sr$RIN = scale(FullPheno_sr$RIN,center = T)
+
+rCountData_rinsite = round(FullCount_sr,0)
+
+#Add STMN2
+Transcripts = c(Transcripts,"STMN2")
+ind = which(rownames(rCountData_rinsite) == "ENSG00000104435")
+rownames(rCountData_rinsite)[ind] = "STMN2"
+
+dds_rinsite = DESeqDataSetFromMatrix(countData = rCountData_rinsite, colData = FullPheno_sr, design= ~ platform + Site + RIN + Subtype, tidy=F) #Subtype must be last (DESeq2 vignette)
+dds_rinsite$Subtype = relevel(dds_rinsite$Subtype,ref = "Control")
+dseq_rinsite = DESeq(dds_rinsite,betaPrior=T)
+
+
 
 #Pairwise "contrast()"
-glia.res = results(dseq4,contrast = c("Subtype","GLIA","Control"))
+glia.res = results(dseq_rinsite,contrast = c("Subtype","GLIA","Control"))
 glia.sig = glia.res[! is.na(glia.res$padj) & glia.res$padj<0.05,]
 filt.glia.sig = glia.sig[rownames(glia.sig) %in% Transcripts,]
 #write.csv(filt.glia.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_GliaControl.csv")
 
-ox.res = results(dseq4,contrast = c("Subtype","OX","Control"))
+ox.res = results(dseq_rinsite,contrast = c("Subtype","OX","Control"))
 ox.sig = ox.res[! is.na(ox.res$padj) & ox.res$padj<0.05,]
 filt.ox.sig = ox.sig[rownames(ox.sig) %in% Transcripts,]
 #write.csv(filt.ox.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_OxControl.csv")
 
-TE.res = results(dseq4,contrast = c("Subtype","TE","Control"))
+TE.res = results(dseq_rinsite,contrast = c("Subtype","TE","Control"))
 TE.sig = TE.res[! is.na(TE.res$padj) & TE.res$padj<0.05,]
 filt.TE.sig = TE.sig[rownames(TE.sig) %in% Transcripts,]
 #write.csv(filt.TE.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_TEControl.csv")
 
-GT.res = results(dseq4,contrast = c("Subtype","GLIA","TE"))
+GT.res = results(dseq_rinsite,contrast = c("Subtype","GLIA","TE"))
 GT.sig = GT.res[! is.na(GT.res$padj) & GT.res$padj<0.05,]
-filt.GT.sig = GT.res[rownames(GT.res) %in% Transcripts,]
+filt.GT.sig = GT.sig[rownames(GT.sig) %in% Transcripts,]
 #write.csv(filt.GT.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_GliaTE.csv")
 
-GO.res = results(dseq4,contrast = c("Subtype","GLIA","OX"))
+GO.res = results(dseq_rinsite,contrast = c("Subtype","GLIA","OX"))
 GO.sig = GO.res[! is.na(GO.res$padj) & GO.res$padj<0.05,]
 filt.GO.sig = GO.sig[rownames(GO.sig) %in% Transcripts,]
 #write.csv(filt.GO.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_GliaOX.csv")
 
-TO.res = results(dseq4,contrast = c("Subtype","TE","OX"))
+TO.res = results(dseq_rinsite,contrast = c("Subtype","TE","OX"))
 TO.sig = TO.res[! is.na(TO.res$padj) & TO.res$padj<0.05,]
 filt.TO.sig = TO.sig[rownames(TO.sig) %in% Transcripts,]
 #write.csv(filt.TO.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_TEOX.csv")
 
-glia.res.ond = results(dseq4,contrast = c("Subtype","GLIA","OND"))
+glia.res.ond = results(dseq_rinsite,contrast = c("Subtype","GLIA","OND"))
 glia.sig.ond = glia.res.ond[! is.na(glia.res.ond$padj) & glia.res.ond$padj<0.05,]
 filt.glia.sig.ond = glia.sig.ond[rownames(glia.sig.ond) %in% Transcripts,]
 #write.csv(filt.glia.sig.ond,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_GliaOND.csv")
 
-ox.res.ond = results(dseq4,contrast = c("Subtype","OX","OND"))
+ox.res.ond = results(dseq_rinsite,contrast = c("Subtype","OX","OND"))
 ox.sig.ond = ox.res.ond[! is.na(ox.res.ond$padj) & ox.res.ond$padj<0.05,]
 filt.ox.sig.ond = ox.sig.ond[rownames(ox.sig.ond) %in% Transcripts,]
 #write.csv(filt.ox.sig.ond,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_OxOND.csv")
 
-TE.res.ond = results(dseq4,contrast = c("Subtype","TE","OND"))
+TE.res.ond = results(dseq_rinsite,contrast = c("Subtype","TE","OND"))
 TE.sig.ond = TE.res.ond[! is.na(TE.res.ond$padj) & TE.res.ond$padj<0.05,]
 filt.TE.sig.ond = TE.sig.ond[rownames(TE.sig.ond) %in% Transcripts,]
 #write.csv(filt.TE.sig.ond,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_TEOND.csv")
 
-COND.res = results(dseq4,contrast = c("Subtype","Control","OND"))
+COND.res = results(dseq_rinsite,contrast = c("Subtype","Control","OND"))
 COND.sig = COND.res[! is.na(COND.res$padj) & COND.res$padj<0.05,]
 filt.COND.sig = COND.sig[rownames(COND.sig) %in% Transcripts,]
 #write.csv(filt.COND.sig,"BothPlatform_AllSubjects_AllGenes_SubtypeSigGenes_11-26-21_ControlOND.csv")
 
 
-
-## Pick out some interesting genes
-# GliaTranscripts = rownames(filt.glia.sig)
-# TETranscripts = rownames(filt.TE.sig)
-# OXTranscripts = rownames(filt.ox.sig)
-# 
-# GliaExclusive = GliaTranscripts[! GliaTranscripts %in% TETranscripts]
-# GliaExclusive = GliaExclusive[! GliaExclusive %in% OXTranscripts]
-# 
-# OXExclusive = OXTranscripts[! OXTranscripts %in% GliaTranscripts]
-# OXExclusive = OXExclusive[! OXExclusive %in% TETranscripts]
-# 
-# TEExclusive = TETranscripts [! TETranscripts %in% GliaTranscripts]
-# TEExclusive = TEExclusive [! TEExclusive %in% OXTranscripts]
-
-#save.image("D:/Jarrett/Research/Fall 2021/ALSPatientStratification_UnivariateDatasets_v2.RData")
-#load("D:/Jarrett/Research/Fall 2021/ALSPatientStratification_UnivariateDatasets_v2.RData")
-
 ################################  DESeq2 Normalization  #########################################################################
 
-tmp = estimateSizeFactors(dds4)
+tmp = estimateSizeFactors(dds_rinsite)
 DESeq_NormalizedCounts_60k = counts(tmp,normalized = T)
 DESeq_NormalizedCounts_60k_filtered = DESeq_NormalizedCounts_60k[rownames(DESeq_NormalizedCounts_60k) %in% Transcripts,]
 NormCounts = DESeq_NormalizedCounts_60k_filtered
@@ -403,31 +490,26 @@ for(i in 1:nrow(NormCounts)){
 ##Parse for plotting
 
 #Subtype Normalized Count Matrix
-GliaI = which(FullPheno$Subtype == "GLIA")
+GliaI = which(FullPheno_sr$Subtype == "GLIA")
 GliaSamp = colnames(NormCounts)[GliaI]
-OxI = which(FullPheno$Subtype == "OX")
+OxI = which(FullPheno_sr$Subtype == "OX")
 OxSamp = colnames(NormCounts)[OxI]
-TEI = which(FullPheno$Subtype == "TE")
+TEI = which(FullPheno_sr$Subtype == "TE")
 TESamp = colnames(NormCounts)[TEI]
-ONDI = which(FullPheno$Subtype == "OND")
+ONDI = which(FullPheno_sr$Subtype == "OND")
 ONDSamp = colnames(NormCounts)[ONDI]
-HCI = which(FullPheno$Subtype == "Control")
+HCI = which(FullPheno_sr$Subtype == "Control")
 HCSamp = colnames(NormCounts)[HCI]
 
-#save.image("D:/Jarrett/Research/Fall 2021/ProgBM/SOD1/ALSPatientStratification_UnivariateDatasets_SOD1.RData")
-load("D:/Jarrett/Research/Fall 2021/ProgBM/SOD1/ALSPatientStratification_UnivariateDatasets_SOD1.RData")
+#save.image("D:/Jarrett/Research/Nat Comm Reviews/RData/ALSPatientStratification_UnivariateDatasets_RINSite_PeerReview_wSTMN2.RData")
+load("D:/Jarrett/Research/Nat Comm Reviews/RData/ALSPatientStratification_UnivariateDatasets_RINSite_PeerReview.RData")
 
 ################################### PLOTS #####################################################################
 
 
-#GliaTEs: c("chr1|98004628|98004776|AluJr:Alu:SINE|189|-","chr3|35763881|35764012|AluJb:Alu:SINE|114|+","chr4|21597081|21597444|THE1B:ERVL-MaLR:LTR|145|+","chr10|14299444|14299567|MIR:MIR:SINE|320|-","chr11|133150062|133150220|MIRb:MIR:SINE|304|-","chr12|79068732|79068841|AluJo:Alu:SINE|174|+","chr12|120642840|120642930|L2b:L2:LINE|367|-","chr21|40634798|40635090|L2a:L2:LINE|289|+")
-#OxTEs: c("chr2|130338399|130338546|L1ME4b:L1:LINE|212|+","chr6|49430916|49431136|LTR86A1:ERVL:LTR|291|-","chr6|116277660|116277934|AluSg:Alu:SINE|44|+","chr8|56958199|56958343|L2b:L2:LINE|303|-","chr14|62107151|62107446|AluJb:Alu:SINE|169|+","chr15|65891440|65891604|MIR3:MIR:SINE|247|+","chr19|46427065|46427223|L2c:L2:LINE|284|+","chr20|36652130|36652423|AluSx1:Alu:SINE|106|+")
-#TDTEs: c("chr1|35564978|35565131|MIR:MIR:SINE|248|-","chr1|244842569|244842704|L1ME2:L1:LINE|203|+","chr2|7016797|7016993|LTR78:ERV1:LTR|297|-","chr3|179902066|179902288|MIRb:MIR:SINE|355|-","chr6|68832632|68832783|MamSINE1:tRNA-RTE:SINE|351|+","chr13|66953336|66953415|L2a:L2:LINE|279|+","chr17|9935956|9936183|L1M4:L1:LINE|302|+","chrX|54815877|54816014|MER117:hAT-Charlie:DNA|248|-")
-
-
 #Clean up naming
 
-Subtype = FullPheno$Subtype
+Subtype = FullPheno_sr$Subtype
 
 for(i in 1:length(Subtype)){
   if(Subtype[i] == "GLIA"){
@@ -446,16 +528,30 @@ Subtype = factor(Subtype,levels = c("Control","FTLD","ALS-Glia","ALS-Ox","ALS-TD
 
 ### AutoPlot
 
-#Provide a specific feature or list of features to plot
-PlotGene = c("MIR3648-1","MIR3648-2")
-#PlotGene = c("FCGR3A","HLA-DOA")
-#PlotGene = c("USMG5","chr15|52312366|52312657|AluSz6:Alu:SINE|96|-","chr8|100918736|100918836|L2c:L2:LINE|320|-")
+GliaTEs= c("chr1|98004628|98004776|AluJr:Alu:SINE|189|-","chr3|35763881|35764012|AluJb:Alu:SINE|114|+","chr4|21597081|21597444|THE1B:ERVL-MaLR:LTR|145|+","chr10|14299444|14299567|MIR:MIR:SINE|320|-","chr11|133150062|133150220|MIRb:MIR:SINE|304|-","chr12|79068732|79068841|AluJo:Alu:SINE|174|+","chr12|120642840|120642930|L2b:L2:LINE|367|-","chr21|40634798|40635090|L2a:L2:LINE|289|+")
+OxTEs= c("chr2|130338399|130338546|L1ME4b:L1:LINE|212|+","chr6|49430916|49431136|LTR86A1:ERVL:LTR|291|-","chr6|116277660|116277934|AluSg:Alu:SINE|44|+","chr8|56958199|56958343|L2b:L2:LINE|303|-","chr14|62107151|62107446|AluJb:Alu:SINE|169|+","chr15|65891440|65891604|MIR3:MIR:SINE|247|+","chr19|46427065|46427223|L2c:L2:LINE|284|+","chr20|36652130|36652423|AluSx1:Alu:SINE|106|+")
+TDTEs= c("chr1|35564978|35565131|MIR:MIR:SINE|248|-","chr1|244842569|244842704|L1ME2:L1:LINE|203|+","chr2|7016797|7016993|LTR78:ERV1:LTR|297|-","chr3|179902066|179902288|MIRb:MIR:SINE|355|-","chr6|68832632|68832783|MamSINE1:tRNA-RTE:SINE|351|+","chr13|66953336|66953415|L2a:L2:LINE|279|+","chr17|9935956|9936183|L1M4:L1:LINE|302|+","chrX|54815877|54816014|MER117:hAT-Charlie:DNA|248|-")
 
+
+#Provide a specific feature or list of features to plot
+my36 = c("AIF1","APOC2","CD44","CHI3L2","CX3CR1","FOLH1","HLA-DRA","TLR7","TMEM125","TNC","TREM2","TYROBP","COL18A1","GABRA1","GAD2","GLRA3","HTR2A","OXR1","SERPINI1","SLC6A13","SLC17A6","TCIRG1","UBQLN2","UCP2","AGPAT4-IT1","CHKB-CPT1B","COL3A1","ENSG00000205041","ENSG00000258674","ENSG00000273151","GATA2-AS1","HSP90AB4P","LINC01347","MIR24-2","MIRLET7BHG","NANOGP4")
+S9 = c("ALOX5AP","APOBR","APOC1","CCR5","CD68","CLEC7A","CR1","FPR3","MSR1","NCF2","NINJ2","ST6GALNAC2","TLR8","TNFRSF25","TREM1","VRK2")
+S10 = c("B4GALT6","BECN1","COL4A6","COX4I2","CP","GABRA6","GPR22","MYH11","MYL9","NDUFA4L2","NOS3","NOTCH3","PCSK1","SOD1","TAGLN","UBQLN1")
+S11 = c("ADAT3","COL6A3","EGLN1P1","ENSG00000263278","ENSG00000268670","ENSG00000279233","ITGBL1","KRT8P13","LINC00176","LINC00638","MIR219A2","NKX6-2","RPS20P22","SLX1B-SULT1A4","TP63","TUB-AS1")
+S12 = c(GliaTEs,OxTEs,TDTEs)
+S13 = c("AGER","AQP1","BECN2","C1D","CCDC154","ENSG00000260198","ENSG00000278434","ENSG00000279759","ENSG00000281969","HIST1H1T","HLA-DRB1","IFI30","IRF7","SELL","SERPINA1","SNX18P3","SOCS3","STH","TNRC6C-AS1","TUNAR")
+
+
+
+library(ggplot2)
+
+PlotGene = my36[1:12]
 #Pick the reference subtype to add DE p-values contrasted with other groups 
 #Options: Glia, Ox, TD, HC, All (case sensitive; note that 'All' option automatically selects the reference group... all comparisons are NOT performed) - this code does not support FTLD as the reference level
 Focus = "TD"
 
-#Autoplot
+
+#Autoplot - Boxplot and Violin on log2 and norm count scales
 for(i in 1:length(PlotGene)){
   
   #Grab the index
@@ -476,7 +572,7 @@ for(i in 1:length(PlotGene)){
   p = p+theme(axis.title.x=element_text(vjust=-2))
   p = p+theme(axis.title.y=element_text(angle=90, vjust=6))
   p = p+ theme(plot.margin = unit(c(1,1,1,1), "cm"))
-  p = p+theme(plot.title = element_text(hjust = 0.5))
+  p = p+theme(plot.title = element_text(hjust = 0.5,size = 40))
   upperlim = max(PlotCounts)+max(PlotCounts)*0.65
   tmplim = min(PlotCounts)-min(PlotCounts)*0.15
   if(round(tmplim,0)==0){
@@ -2633,7 +2729,7 @@ for(i in 1:length(PlotGene)){
 #Warnings can generally be ignored for this loop - there are some duplicated lines of code
 
 
-#Log2 Violin Autoplot only (scale = "width")
+#Plots for Publication
 for(i in 1:length(PlotGene)){
   
   #Grab the index
@@ -2654,13 +2750,15 @@ for(i in 1:length(PlotGene)){
   p = p+scale_x_discrete(limits=c("Control","FTLD","ALS-Glia","ALS-Ox","ALS-TD"))
   p = p+scale_fill_manual(values = c("gray50","gray30","goldenrod1","navy","firebrick"))
   p = p+theme(axis.text = element_text(size=20), axis.title = element_text(size=20),plot.title = element_text(size=24))
-  p = p+theme(panel.background = element_rect(fill = "gray90",colour = "gray80",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "gray80"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "gray80"))
+  p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "gray80"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "gray80"))
   p = p+theme(legend.position = "none")
   p = p+geom_dotplot(binaxis = 'y',stackdir = 'center',dotsize = 0.25,fill="white",stackratio = 0.75)
   p = p+theme(axis.title.x=element_text(vjust=-2))
-  p = p+theme(axis.title.y=element_text(angle=90, vjust=6))
+  p = p+theme(axis.title.y=element_text(angle=90, vjust=4,size=24))
   p = p+theme(plot.margin = unit(c(1,1,1,1), "cm"))
-  p = p+theme(plot.title = element_text(hjust = 0.5))
+  p = p+theme(axis.text.x = element_text(size = 30))
+  p = p+theme(axis.text.y = element_text(size = 30))
+  p = p+theme(plot.title = element_text(hjust = 0.5,size = 40))
   upperlim = max(LogPlotCounts)+max(LogPlotCounts)*0.65
   tmplim = min(LogPlotCounts)-min(LogPlotCounts)*0.15
   if(round(tmplim,0)==0){
@@ -2680,7 +2778,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       pstat = paste("FDR p-value:",Controlp)
-      p = p+annotate("text",label=pstat,x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15)
+      p = p+annotate("text",label=pstat,x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15,size = 6)
     }
     
     ONDp = filt.glia.sig.ond #vs OND
@@ -2693,7 +2791,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=2,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       pstat = paste("FDR p-value:",ONDp)
-      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3)
+      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3,size = 6)
     }
     
     OXp = filt.GO.sig #vs OX
@@ -2706,7 +2804,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       pstat = paste("FDR p-value:",OXp)
-      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45)
+      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45,size = 6)
     }
     
     TEp = filt.GT.sig #vs TE
@@ -2719,7 +2817,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       pstat = paste("FDR p-value:",TEp)
-      p = p+annotate("text",label=pstat,x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6)
+      p = p+annotate("text",label=pstat,x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6,size = 6)
     }
     
   }else if(Focus == "Ox"){
@@ -2733,7 +2831,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       pstat = paste("FDR p-value:",Controlp)
-      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15)
+      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15,size = 6)
     }
     
     ONDp = filt.ox.sig.ond #vs OND
@@ -2746,7 +2844,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=2,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       pstat = paste("FDR p-value:",ONDp)
-      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3)
+      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3,size = 6)
     }
     
     OXp = filt.GO.sig #vs OX
@@ -2759,7 +2857,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       pstat = paste("FDR p-value:",OXp)
-      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45)
+      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45,size = 6)
     }
     
     TEp = filt.TO.sig #vs TE
@@ -2772,7 +2870,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       pstat = paste("FDR p-value:",TEp)
-      p = p+annotate("text",label=pstat,x=4.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6)
+      p = p+annotate("text",label=pstat,x=4.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6,size = 6)
     }
     
   }else if(Focus == "TD"){
@@ -2786,7 +2884,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       pstat = paste("FDR p-value:",Controlp)
-      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15)
+      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15,size = 6)
     }
     
     ONDp = filt.TE.sig.ond #vs OND
@@ -2799,7 +2897,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=2,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       pstat = paste("FDR p-value:",ONDp)
-      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3)
+      p = p+annotate("text",label=pstat,x=3.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3,size = 6)
     }
     
     Gliap = filt.GT.sig #vs Glia
@@ -2812,7 +2910,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       pstat = paste("FDR p-value:",Gliap)
-      p = p+annotate("text",label=pstat,x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45)
+      p = p+annotate("text",label=pstat,x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45,size = 6)
     }
     
     TEp = filt.TO.sig #vs OX
@@ -2825,7 +2923,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       pstat = paste("FDR p-value:",TEp)
-      p = p+annotate("text",label=pstat,x=4.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6)
+      p = p+annotate("text",label=pstat,x=4.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6,size = 6)
     }
     
   }else if(Focus == "HC"){
@@ -2839,7 +2937,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       p = p+geom_segment(aes(x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.1,xend=2,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.05),size=0.8)
       pstat = paste("FDR p-value:",Controlp)
-      p = p+annotate("text",label=pstat,x=1.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15)
+      p = p+annotate("text",label=pstat,x=1.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.15,size = 6)
     }
     
     ONDp = filt.glia.sig #vs Glia
@@ -2852,7 +2950,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       p = p+geom_segment(aes(x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.25,xend=3,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.2),size=0.8)
       pstat = paste("FDR p-value:",ONDp)
-      p = p+annotate("text",label=pstat,x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3)
+      p = p+annotate("text",label=pstat,x=2,y=max(LogPlotCounts)+max(LogPlotCounts)*0.3,size = 6)
     }
     
     OXp = filt.ox.sig #vs OX
@@ -2865,7 +2963,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       p = p+geom_segment(aes(x=4,y=max(LogPlotCounts)+max(LogPlotCounts)*0.40,xend=4,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.35),size=0.8)
       pstat = paste("FDR p-value:",OXp)
-      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45)
+      p = p+annotate("text",label=pstat,x=2.5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.45,size = 6)
     }
     
     TEp = filt.TE.sig #vs TE
@@ -2878,7 +2976,7 @@ for(i in 1:length(PlotGene)){
       p = p+geom_segment(aes(x=1,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=1,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       p = p+geom_segment(aes(x=5,y=max(LogPlotCounts)+max(LogPlotCounts)*0.55,xend=5,yend=max(LogPlotCounts)+max(LogPlotCounts)*0.50),size=0.8)
       pstat = paste("FDR p-value:",TEp)
-      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6)
+      p = p+annotate("text",label=pstat,x=3,y=max(LogPlotCounts)+max(LogPlotCounts)*0.6,size = 6)
     }
     
   }else if(Focus == "All"){
@@ -3267,6 +3365,9 @@ barplot(SubfamilyDF,ylim = c(0,300),ylab = "Number of Discriminatory TEs",xlab="
 plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
 legend("topleft",legend = rownames(SubfamilyDF),col = mycols,lty = 1,lwd=3,cex = 0.8,ncol=4)
 
+#Source
+# setwd("D:/Jarrett/Research/Nat Comm Reviews/Source")
+# write.csv(SubfamilyDF,"FigS4A.csv")
 
 
 #Pie chart version
