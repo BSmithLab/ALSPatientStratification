@@ -275,6 +275,317 @@ labeledHeatmap(Matrix = moduleTraitCor,
 #write.csv(MEs,"ALS_EigenGeneMatrix.csv")
 
 
+#################################################################################################################
+#Custom WGCNA heatmaps
+
+moduleTraitCor
+textMatrix
+WGCNAmat = data.frame(moduleTraitCor)
+WGCNAp =  signif(moduleTraitPvalue, 1)
+WGCNAp2 = - log10(WGCNAp)
+
+library(ggplot2)
+
+customheat = data.frame(matrix(NA,nrow(WGCNAmat)*ncol(WGCNAmat),3))
+colnames(customheat) = c("Module","Response","Value")
+plotorder = c(rep("MEpink",3),rep("MEred",3),rep("MEtan",3),rep("MEturquoise",3),rep("MEbrown",3),rep("MEgreen",3),rep("MEpurple",3),rep("MEgrey",3),rep("MEmagenta",3),rep("MEyellow",3),rep("MEblue",3),rep("MEsalmon",3),rep("MEblack",3),rep("MEgreenyellow",3))
+customheat$Module = plotorder
+customheat$Response = rep(colnames(WGCNAmat),nrow(WGCNAmat))
+
+#Fill plot matrix
+for(i in 1:nrow(customheat)){
+  
+  for(j in 1:nrow(WGCNAmat)){
+    
+    for(k in 1:ncol(WGCNAmat)){
+      
+      if(customheat$Module[i] == rownames(WGCNAmat)[j] && customheat$Response[i] == colnames(WGCNAmat)[k]){
+        
+        customheat$Value[i] = WGCNAmat[j,k]
+        
+      }
+      
+    }
+    
+    
+  }
+  
+}
+
+#Clean up Response variable names
+for(i in 1:nrow(customheat)){
+  
+  if(customheat$Response[i] == "Age.of.Onset"){
+    customheat$Response[i] = "Age of Onset"
+  }else if(customheat$Response[i] == "Age.of.Death"){
+    customheat$Response[i] = "Age of Death"
+  }else if(customheat$Response[i] == "Disease.Duration"){
+    customheat$Response[i] = "Disease Duration"
+  }
+  
+}
+
+customheat$Module = as.character(customheat$Module)
+customheat$Module = factor(customheat$Module,levels=unique(customheat$Module))
+
+p = ggplot(customheat,aes(Module,Response)) + geom_tile(aes(fill=Value),color="black")
+p = p+scale_fill_gradient2(low="blue",mid="white",high="red",limits=c(-0.2,0.2))
+p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "white"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "white"))
+p
+
+
+customheatp = data.frame(matrix(NA,nrow(WGCNAp2)*ncol(WGCNAp2),3))
+colnames(customheatp) = c("Module","Response","Value")
+customheatp$Module = plotorder
+customheatp$Response = rep(colnames(WGCNAp2),nrow(WGCNAp2))
+
+#Fill plot matrix
+for(i in 1:nrow(customheatp)){
+  
+  for(j in 1:nrow(WGCNAp2)){
+    
+    for(k in 1:ncol(WGCNAp2)){
+      
+      if(customheatp$Module[i] == rownames(WGCNAp2)[j] && customheatp$Response[i] == colnames(WGCNAp2)[k]){
+        
+        customheatp$Value[i] = WGCNAp2[j,k]
+        
+      }
+      
+    }
+    
+    
+  }
+  
+}
+
+#Clean up Response variable names
+for(i in 1:nrow(customheatp)){
+  
+  if(customheatp$Response[i] == "Age.of.Onset"){
+    customheatp$Response[i] = "Age of Onset"
+  }else if(customheatp$Response[i] == "Age.of.Death"){
+    customheatp$Response[i] = "Age of Death"
+  }else if(customheatp$Response[i] == "Disease.Duration"){
+    customheatp$Response[i] = "Disease Duration"
+  }
+  
+}
+
+customheatp$Module = as.character(customheatp$Module)
+customheatp$Module = factor(customheatp$Module,levels=unique(customheatp$Module))
+
+
+p = ggplot(customheatp,aes(Module,Response)) + geom_tile(aes(fill=Value),color="black")
+p = p+scale_fill_gradient2(low="blue",mid="white",high="darkgreen",limits=c(0,4))
+p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "white"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "white"))
+p
+
+
+
+#Enrichment Heatmap
+setwd("C:/Users/jeshima/Desktop/ALS Manuscript/Nature/Communications Submission/Peer Review")
+EigGO = read.csv("EigengeneEnrichmentMatrix.csv") #Bonferroni-adjusted p-values from Table S9
+rownames(EigGO) = EigGO$X; EigGO = EigGO[,-1]; EigGO = -log10(EigGO)
+plotorderGO = c(rep("MEpink",4),rep("MEred",4),rep("MEtan",4),rep("MEturquoise",4),rep("MEbrown",4),rep("MEgreen",4),rep("MEpurple",4),rep("MEgrey",4),rep("MEmagenta",4),rep("MEyellow",4),rep("MEblue",4),rep("MEsalmon",4),rep("MEblack",4),rep("MEgreenyellow",4))
+
+customheatGO = data.frame(matrix(NA,nrow(EigGO)*ncol(EigGO),3))
+colnames(customheatGO) = c("Module","Response","Value")
+customheatGO$Module = plotorderGO
+customheatGO$Response = rep(colnames(EigGO),nrow(EigGO))
+
+#Fill plot matrix
+for(i in 1:nrow(customheatGO)){
+  
+  for(j in 1:nrow(EigGO)){
+    
+    for(k in 1:ncol(EigGO)){
+      
+      if(customheatGO$Module[i] == rownames(EigGO)[j] && customheatGO$Response[i] == colnames(EigGO)[k]){
+        
+        customheatGO$Value[i] = EigGO[j,k]
+        
+      }
+      
+    }
+    
+    
+  }
+  
+}
+
+#Clean up Response variable names
+for(i in 1:nrow(customheatGO)){
+  
+  if(customheatGO$Response[i] == "Extracellular.Matrix"){
+    customheatGO$Response[i] = "Extracellular Matrix"
+  }else if(customheatGO$Response[i] == "Synaptic.Signaling"){
+    customheatGO$Response[i] = "Synaptic Signaling"
+  }else if(customheatGO$Response[i] == "Immune.Response"){
+    customheatGO$Response[i] = "Immune Response"
+  }
+  
+}
+
+customheatGO$Module = as.character(customheatGO$Module)
+customheatGO$Module = factor(customheatGO$Module,levels=unique(customheatGO$Module))
+
+
+p = ggplot(customheatGO,aes(Module,Response)) + geom_tile(aes(fill=Value),color="black")
+p = p+scale_fill_gradient2(low="blue",mid="white",high="darkgreen",limits=c(0,16))
+p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "white"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "gray50"))
+p
+
+
+#Regression with MEs to get subtype specificity in expression
+Pheno = read.csv("Table_S13.csv")
+rownames(MEs) = gsub("-","\\.",rownames(MEs))
+head(MEs)
+
+table(Pheno$Subject == rownames(MEs))
+
+SubtypeBeta = data.frame(matrix(NA,nrow = length(names(table(Pheno$Subtype))),ncol(MEs)))
+colnames(SubtypeBeta) = colnames(MEs)
+rownames(SubtypeBeta) = c("GLIA","OX","TD")
+
+for(i in 1:ncol(MEs)){
+  
+  for(j in 1:nrow(SubtypeBeta)){
+    
+    smartlevel = rownames(SubtypeBeta)[j]
+    dummyreg = rep(NA,length(Pheno$Subtype))
+    
+    for(k in 1:length(Pheno$Subtype)){
+      
+      if(Pheno$Subtype[k] == smartlevel){
+        dummyreg[k] = 1
+      }else{
+        dummyreg[k] = 0
+      }
+        
+    }
+      
+    model = lm(MEs[,i] ~ dummyreg)
+    tmp = summary(model)$coefficients[,1][[2]] #Beta coefficient for non-zero level
+    SubtypeBeta[j,i] = tmp
+  }
+  
+}
+
+rownames(SubtypeBeta) = c("ALS-Glia","ALS-Ox","ALS-TD")
+
+
+plotordersub = c(rep("MEpink",3),rep("MEred",3),rep("MEtan",3),rep("MEturquoise",3),rep("MEbrown",3),rep("MEgreen",3),rep("MEpurple",3),rep("MEgrey",3),rep("MEmagenta",3),rep("MEyellow",3),rep("MEblue",3),rep("MEsalmon",3),rep("MEblack",3),rep("MEgreenyellow",3))
+colorder = c("ALS-Glia","ALS-Ox","ALS-TD")
+
+customheatsub = data.frame(matrix(NA,nrow(SubtypeBeta)*ncol(SubtypeBeta),3))
+colnames(customheatsub) = c("Module","Response","Value")
+customheatsub$Module = plotordersub
+customheatsub$Response = rep(colorder,ncol(SubtypeBeta))
+
+for(i in 1:nrow(SubtypeBeta)){
+  
+  for(j in 1:ncol(SubtypeBeta)){
+    
+    for(k in 1:nrow(customheatsub)){
+      
+      if(rownames(SubtypeBeta)[i] == customheatsub$Response[k] && colnames(SubtypeBeta)[j] == customheatsub$Module[k]){
+        customheatsub$Value[k] = SubtypeBeta[i,j]
+      }
+      
+    }
+    
+  }
+  
+  
+}
+
+customheatsub$Module = as.character(customheatsub$Module)
+customheatsub$Module = factor(customheatsub$Module,levels=unique(customheatsub$Module))
+
+p = ggplot(customheatsub,aes(Module,Response)) + geom_tile(aes(fill=Value),color="black")
+p = p+scale_fill_gradient2(low="blue",mid="white",high="red",limits=c(-0.08,0.08))
+p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "white"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "gray50"))
+p
+
+
+
+
+#Regression p-values
+Subtypep = data.frame(matrix(NA,nrow = length(names(table(Pheno$Subtype))),ncol(MEs)))
+colnames(Subtypep) = colnames(MEs)
+rownames(Subtypep) = c("GLIA","OX","TD")
+
+for(i in 1:ncol(MEs)){
+  
+  for(j in 1:nrow(Subtypep)){
+    
+    smartlevel = rownames(Subtypep)[j]
+    dummyreg = rep(NA,length(Pheno$Subtype))
+    
+    for(k in 1:length(Pheno$Subtype)){
+      
+      if(Pheno$Subtype[k] == smartlevel){
+        dummyreg[k] = 1
+      }else{
+        dummyreg[k] = 0
+      }
+      
+    }
+    
+    model = lm(MEs[,i] ~ dummyreg)
+    tmp = summary(model)$coefficients[,4][[2]] #Beta coefficient for non-zero level
+    Subtypep[j,i] = tmp
+  }
+  
+}
+
+rownames(Subtypep) = c("ALS-Glia","ALS-Ox","ALS-TD")
+
+
+plotordersub = c(rep("MEpink",3),rep("MEred",3),rep("MEtan",3),rep("MEturquoise",3),rep("MEbrown",3),rep("MEgreen",3),rep("MEpurple",3),rep("MEgrey",3),rep("MEmagenta",3),rep("MEyellow",3),rep("MEblue",3),rep("MEsalmon",3),rep("MEblack",3),rep("MEgreenyellow",3))
+colorder = c("ALS-Glia","ALS-Ox","ALS-TD")
+
+customheatsubp = data.frame(matrix(NA,nrow(Subtypep)*ncol(Subtypep),3))
+colnames(customheatsubp) = c("Module","Response","Value")
+customheatsubp$Module = plotordersub
+customheatsubp$Response = rep(colorder,ncol(Subtypep))
+
+for(i in 1:nrow(Subtypep)){
+  
+  for(j in 1:ncol(Subtypep)){
+    
+    for(k in 1:nrow(customheatsubp)){
+      
+      if(rownames(Subtypep)[i] == customheatsubp$Response[k] && colnames(Subtypep)[j] == customheatsubp$Module[k]){
+        customheatsubp$Value[k] = Subtypep[i,j]
+      }
+      
+    }
+    
+  }
+  
+  
+}
+
+customheatsubp$Module = as.character(customheatsubp$Module)
+customheatsubp$Module = factor(customheatsubp$Module,levels=unique(customheatsubp$Module))
+
+customheatsubp$Value = as.numeric(customheatsubp$Value)
+customheatsubp$Value =p.adjust(customheatsubp$Value,method = "bonferroni")
+refp = customheatsubp
+customheatsubp$Value = -log10(customheatsubp$Value)
+
+p = ggplot(customheatsubp,aes(Module,Response)) + geom_tile(aes(fill=Value),color="black")
+p = p+scale_fill_gradient2(low="blue",mid="white",high="darkgreen",limits=c(0,55))
+p = p+theme(panel.background = element_rect(fill = "white",colour = "white",size = 0.5,linetype = "solid"),panel.grid.major = element_line(size = 0.35,linetype = "solid",colour = "white"),panel.grid.minor = element_line(size = 0.15,linetype = "solid",colour = "gray50"))
+p
+
+customheatsub #beta coeff
+refp #Bonferroni adjusted p value
+refp[which(refp$Value < 0.05),] #Sig boxes
+#################################################################################################################
+
 
 # Define variable weight containing the weight column of datTrait
 DD = as.data.frame(subtypepheno$`Disease Duration`);
