@@ -1,5 +1,6 @@
 ## ALS Patient Stratification Analysis
-R and Python scripts used in the ALS Patient Stratification analysis by Eshima, O'Connor, Marschall, NYGC ALS Consortium, Bowser, Plaisier, and Smith
+R and Python scripts used in the ALS Patient Stratification analysis for:
+Eshima J, O’Connor SA, Marschall E, NYGC ALS Consortium, Bowser R, Plaisier CL, Smith BS. Molecular subtypes of ALS are associated with differences in patient prognosis. Nature Communications. 2023 Jan 6;14(1):95.
 
 [![DOI](https://zenodo.org/badge/414720283.svg)](https://zenodo.org/badge/latestdoi/414720283)
 
